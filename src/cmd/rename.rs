@@ -55,11 +55,17 @@ Column names with characters that need escaping:
 
     $ xan rename 'NAME OF PERSON,\"AGE, \"\"OF\"\" PERSON\"' file.csv
 
+Using a mapping file to rename columns:
+
+    $ xan rename --mapping renames.csv file.csv
+    $ xan rename --mapping renames.csv --mapping-source Source --mapping-dest Dest file.csv
+
 Usage:
     xan rename [options] --replace <pattern> <replacement> [<input>]
     xan rename [options] --prefix <prefix> [<input>]
     xan rename [options] --suffix <suffix> [<input>]
     xan rename [options] --slugify [<input>]
+    xan rename [options] --mapping <file> [<input>]
     xan rename [options] <columns> [<input>]
     xan rename --help
 
@@ -75,6 +81,9 @@ rename options:
                            etc.
     -R, --replace          Replace matches of a pattern by given replacement in
                            column names.
+    -m, --mapping <file>        Path to a CSV file containing the column rename mapping.
+        --mapping-source <col>  Column in mapping file with source names. [default: 0]
+        --mapping-dest <col>    Column in mapping file with dest names. [default: 1]
     -f, --force            Ignore unknown columns to be renamed.
 
 Common options:
@@ -101,6 +110,9 @@ struct Args {
     flag_suffix: Option<String>,
     flag_slugify: bool,
     flag_replace: bool,
+    flag_mapping: Option<String>,
+    flag_mapping_source: SelectedColumns,
+    flag_mapping_dest: SelectedColumns,
     flag_force: bool,
 }
 
@@ -132,6 +144,10 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
         if args.flag_replace {
             Err("Cannot use -R/--replace with -n/--no-headers!")?;
+        }
+
+        if args.flag_mapping.is_some() {
+            Err("Cannot use -m/--mapping with -n/--no-headers!")?;
         }
 
         let rename_as = util::str_to_csv_byte_record(&args.arg_columns.unwrap());
@@ -245,6 +261,33 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 } else {
                     h.to_vec()
                 }
+            })
+            .collect()
+    } else if let Some(ref mapping_path) = args.flag_mapping {
+        let mapping_pairs: Vec<(Vec<u8>, Vec<u8>)> = Config::new(&Some(mapping_path.clone()))
+            .delimiter(args.flag_delimiter)
+            .pairs((
+                &Some(args.flag_mapping_source.clone()),
+                &Some(args.flag_mapping_dest.clone()),
+            ))?
+            .map(|result| {
+                result.map(|(source, dest)| {
+                    (
+                        source.into_bytes(),
+                        dest.expect("mapping dest column is required").into_bytes(),
+                    )
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        headers
+            .iter()
+            .map(|h| {
+                mapping_pairs
+                    .iter()
+                    .find(|(source, _)| source == h)
+                    .map(|(_, dest)| dest.clone())
+                    .unwrap_or_else(|| h.to_vec())
             })
             .collect()
     } else {
