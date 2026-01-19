@@ -34,15 +34,15 @@ Column names with characters that need escaping:
 
 Using a mapping file to rename columns:
 
-    $ xan rename --mapping renames.csv file.csv
-    $ xan rename --mapping renames.csv --mapping-source Source --mapping-dest Dest file.csv
+    $ xan rename --map renames.csv file.csv
+    $ xan rename --map renames.csv --map-cols 0,1 file.csv
 
 Usage:
     xan rename [options] --replace <pattern> <replacement> [<input>]
     xan rename [options] --prefix <prefix> [<input>]
     xan rename [options] --suffix <suffix> [<input>]
     xan rename [options] --slugify [<input>]
-    xan rename [options] --mapping <file> [<input>]
+    xan rename [options] --map <file> [<input>]
     xan rename [options] <columns> [<input>]
     xan rename --help
 
@@ -58,9 +58,9 @@ rename options:
                            etc.
     -R, --replace          Replace matches of a pattern by given replacement in
                            column names.
-    -m, --mapping <file>        Path to a CSV file containing the column rename mapping.
-        --mapping-source <col>  Column in mapping file with source names. [default: 0]
-        --mapping-dest <col>    Column in mapping file with dest names. [default: 1]
+    -m, --map <file>       Path to a CSV file containing the column mapping.
+        --map-cols <arg>   Columns in mapping file with source and destination
+                           column names for rename. [default: 0,1]
     -f, --force            Ignore unknown columns to be renamed.
 
 Common options:
