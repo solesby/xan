@@ -1,4 +1,9 @@
-Source,Dest,Default
-Category,cat,Format
-Format,fmt,Category
-Year,year,Year
+# Example mapping file
+# by default columns 0,1 will be used as source and destination column names for rename
+#   xan rename --map renames.csv series.csv
+# is equivalent to:
+#   xan rename cat,fmt,year -s Category,Format,Year series.csv
+Source   , Dest  , Default
+Category , cat   , Format
+Format   , fmt   , Category
+Year     , year  , Year

@@ -633,13 +633,14 @@ impl Config {
         select: (&Option<SelectedColumns>, &Option<SelectedColumns>),
     ) -> CliResult<Box<dyn Iterator<Item = PairResult>>> {
         if let Some(first_sel) = &select.0 {
-            let mut csv_reader = self.simd_reader()?;
-            let headers = csv_reader.byte_headers()?;
-            let first_column_index = first_sel.single_selection(headers, !self.no_headers)?;
+            // always use non-simd reader since config files are small and benefit from trim and comments
+            let mut csv_reader = self.reader()?;
+            let headers = csv_reader.byte_headers()?.clone();
+            let first_column_index = first_sel.single_selection(&headers, !self.no_headers)?;
             let second_column_index_opt = select
                 .1
                 .as_ref()
-                .map(|sel| sel.single_selection(headers, !self.no_headers))
+                .map(|sel| sel.single_selection(&headers, !self.no_headers))
                 .transpose()?;
 
             return Ok(Box::new(csv_reader.into_byte_records().map(
