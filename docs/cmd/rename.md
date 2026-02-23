@@ -32,11 +32,17 @@ Column names with characters that need escaping:
 
     $ xan rename 'NAME OF PERSON,"AGE, ""OF"" PERSON"' file.csv
 
+Using a mapping file to rename columns:
+
+    $ xan rename --map renames.csv file.csv
+    $ xan rename --map renames.csv --map-cols 0,1 file.csv
+
 Usage:
     xan rename [options] --replace <pattern> <replacement> [<input>]
     xan rename [options] --prefix <prefix> [<input>]
     xan rename [options] --suffix <suffix> [<input>]
     xan rename [options] --slugify [<input>]
+    xan rename [options] --map <file> [<input>]
     xan rename [options] <columns> [<input>]
     xan rename --help
 
@@ -52,6 +58,9 @@ rename options:
                            etc.
     -R, --replace          Replace matches of a pattern by given replacement in
                            column names.
+    -m, --map <file>       Path to a CSV file containing the column mapping.
+        --map-cols <arg>   Columns in mapping file with source and destination
+                           column names for rename. [default: 0,1]
     -f, --force            Ignore unknown columns to be renamed.
 
 Common options:

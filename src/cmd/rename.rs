@@ -55,11 +55,17 @@ Column names with characters that need escaping:
 
     $ xan rename 'NAME OF PERSON,\"AGE, \"\"OF\"\" PERSON\"' file.csv
 
+Using a mapping file to rename columns:
+
+    $ xan rename --map renames.csv file.csv
+    $ xan rename --map renames.csv --map-cols 0,1 file.csv
+
 Usage:
     xan rename [options] --replace <pattern> <replacement> [<input>]
     xan rename [options] --prefix <prefix> [<input>]
     xan rename [options] --suffix <suffix> [<input>]
     xan rename [options] --slugify [<input>]
+    xan rename [options] --map <file> [<input>]
     xan rename [options] <columns> [<input>]
     xan rename --help
 
@@ -75,6 +81,9 @@ rename options:
                            etc.
     -R, --replace          Replace matches of a pattern by given replacement in
                            column names.
+    -m, --map <file>       Path to a CSV file containing the column mapping.
+        --map-cols <arg>   Columns in mapping file with source and destination
+                           column names for rename. [default: 0,1]
     -f, --force            Ignore unknown columns to be renamed.
 
 Common options:
@@ -101,6 +110,8 @@ struct Args {
     flag_suffix: Option<String>,
     flag_slugify: bool,
     flag_replace: bool,
+    flag_map: Option<String>,
+    flag_map_cols: Option<String>,
     flag_force: bool,
 }
 
@@ -132,6 +143,10 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
 
         if args.flag_replace {
             Err("Cannot use -R/--replace with -n/--no-headers!")?;
+        }
+
+        if args.flag_map.is_some() {
+            Err("Cannot use -m/--map with -n/--no-headers!")?;
         }
 
         let rename_as = util::str_to_csv_byte_record(&args.arg_columns.unwrap());
@@ -245,6 +260,40 @@ pub fn run(argv: &[&str]) -> CliResult<()> {
                 } else {
                     h.to_vec()
                 }
+            })
+            .collect()
+    } else if let Some(ref mapping_path) = args.flag_map {
+        let map_cols_str = args.flag_map_cols.as_deref().unwrap_or("0,1");
+        let map_cols: Vec<&str> = map_cols_str.split(',').collect();
+        if map_cols.len() != 2 {
+            Err("--map-cols must specify exactly two columns (e.g., '0,1' or 'source,dest')")?;
+        }
+        let source_col: SelectedColumns = SelectedColumns::try_from(map_cols[0].to_string())?;
+        let dest_col: SelectedColumns = SelectedColumns::try_from(map_cols[1].to_string())?;
+
+        let mapping_pairs: Vec<(Vec<u8>, Vec<u8>)> = Config::new(&Some(mapping_path.clone()))
+            .delimiter(args.flag_delimiter)
+            .comment(Some(b'#'))
+            .trim(true)
+            .pairs((&Some(source_col), &Some(dest_col)))?
+            .map(|result| {
+                result.map(|(source, dest)| {
+                    (
+                        source.into_bytes(),
+                        dest.expect("mapping dest column is required").into_bytes(),
+                    )
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        headers
+            .iter()
+            .map(|h| {
+                mapping_pairs
+                    .iter()
+                    .find(|(source, _)| source == h)
+                    .map(|(_, dest)| dest.clone())
+                    .unwrap_or_else(|| h.to_vec())
             })
             .collect()
     } else {
